@@ -1,178 +1,146 @@
-/**
- * ==============================================================================
- * SISTEMA DE GERENCIAMENTO DE CHARADAS (ADMIN DASHBOARD)
- * ==============================================================================
- * Este script gerencia toda a lógica de um CRUD (Create, Read, Update, Delete)
- * utilizando persistência de dados em uma API externa e autenticação via Token.
- */
-
 // ==========================================
-// CONFIGURAÇÕES GERAIS DA API
+// 1. CONFIGURAÇÕES E ENDPOINTS
 // ==========================================
 
-/**
- * 🎯 [PASSO 1: Configuração do Endpoint]
- * Define a URL base para todas as requisições. Centralizar isso facilita
- * a manutenção caso o endereço do servidor mude no futuro.
- */
+// Aqui definimos o endereço "raiz" do servidor. 
+// Usar uma constante evita que você precise mudar o link em 10 lugares diferentes caso o servidor mude.
 const API_BASE_URL = 'https://api-charadas-3mpu.vercel.app'; 
 
 // ==========================================
-// REFERÊNCIAS DO DOM (Document Object Model)
-// ==========================================
-// Capturamos os elementos HTML para que o JavaScript possa interagir com eles.
-
-// Seções de visualização (Telas)
-const loginSection = document.getElementById('loginSection');
-const adminSection = document.getElementById('adminSection');
-
-// Elementos de Login
-const loginForm = document.getElementById('loginForm');
-const btnLogout = document.getElementById('btnLogout');
-const userInfo = document.getElementById('userInfo');
-const loginError = document.getElementById('loginError');
-
-// Elementos do CRUD de Charadas
-const charadaForm = document.getElementById('charadaForm');
-const tabelaCharadas = document.getElementById('tabelaCharadas');
-const totalCharadasEl = document.getElementById('totalCharadas');
-const btnCancelar = document.getElementById('btnCancelar');
-const formTitle = document.getElementById('formTitle');
-
-// ==========================================
-// ESTADO DA APLICAÇÃO
+// 2. MAPEAMENTO DO HTML (DOM)
 // ==========================================
 
-/**
- * tokenAtual: Armazena o "passaporte" de acesso do usuário. 
- * Tentamos recuperar do localStorage para que o usuário não precise logar novamente ao dar F5.
- */
+// Selecionamos as seções (divs) que funcionam como "páginas" dentro do seu site.
+const loginSection = document.getElementById('loginSection'); // Tela de entrada
+const adminSection = document.getElementById('adminSection'); // Painel principal
+
+// Capturamos os elementos do formulário de login para monitorar o acesso.
+const loginForm = document.getElementById('loginForm'); // O formulário em si
+const btnLogout = document.getElementById('btnLogout'); // Botão de sair
+const userInfo = document.getElementById('userInfo'); // Elemento que exibe o nome do admin
+const loginError = document.getElementById('loginError'); // Texto vermelho de "Erro de login"
+
+// Capturamos os elementos que gerenciam as charadas (CRUD).
+const charadaForm = document.getElementById('charadaForm'); // Formulário de criar/editar
+const tabelaCharadas = document.getElementById('tabelaCharadas'); // Onde os dados aparecem
+const totalCharadasEl = document.getElementById('totalCharadas'); // O contador no topo da página
+const btnCancelar = document.getElementById('btnCancelar'); // Botão para desistir de uma edição
+const formTitle = document.getElementById('formTitle'); // O título que muda conforme a ação
+
+// ==========================================
+// 3. GERENCIAMENTO DE ESTADO (MEMÓRIA)
+// ==========================================
+
+// O 'tokenAtual' é a chave de segurança. 
+// O comando 'localStorage.getItem' verifica se o usuário já logou anteriormente para não pedir senha de novo no F5.
 let tokenAtual = localStorage.getItem('adminToken') || null;
 
-/**
- * charadas: Array global que servirá como nosso "banco de dados local" 
- * sincronizado com o servidor para facilitar a renderização da interface.
- */
+// Criamos uma lista (array) vazia para guardar as charadas que o servidor nos enviar.
 let charadas = [];
 
-/**
- * iniciarApp: Função de entrada (Entry Point). 
- * Decide se mostra a tela de login ou carrega os dados com base na existência do token.
- */
+// Esta função é o "motor de partida". Ela decide se o usuário vê a tela de login ou os dados.
 function iniciarApp() {
     if (tokenAtual) {
+        // Se temos um token, mostramos o painel e baixamos as charadas do banco.
         mostrarPainelAdmin();
         carregarCharadas();
     } else {
+        // Se não temos token, mostramos a tela de login obrigatória.
         mostrarLogin();
     }
 }
 
 // ==========================================
-// 1. AUTENTICAÇÃO (Login / Logout)
+// 4. SISTEMA DE SEGURANÇA (LOGIN)
 // ==========================================
 
-/**
- * Listener do formulário de login.
- * Intercepta o envio para processar a autenticação via Fetch API.
- */
+// Ficamos "ouvindo" o momento em que o usuário clica no botão de entrar.
 loginForm.addEventListener('submit', async (e) => {
-    e.preventDefault(); // Impede o recarregamento da página (comportamento padrão do form)
+    e.preventDefault(); // Comando essencial: impede que a página recarregue e limpe os campos.
     
+    // Pegamos os valores digitados nos inputs de usuário e senha.
     const usuario = document.getElementById('usuario').value;
     const password = document.getElementById('password').value;
 
     try {
-        // 🎯 [PASSO 2: Requisição de Autenticação]
+        // Fazemos uma chamada "POST" para enviar os dados sensíveis ao servidor.
         const resposta = await fetch(`${API_BASE_URL}/login`, {
-            method: 'POST', // Método POST para enviar dados sensíveis
-            headers: {
-                'Content-Type': 'application/json' // Avisa a API que estamos enviando um JSON
-            },
-            // Converte o objeto JS para uma string JSON antes de enviar
-            body: JSON.stringify({ usuario: usuario, senha: password }) 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' }, // Avisamos que estamos enviando um objeto JSON.
+            body: JSON.stringify({ usuario: usuario, senha: password }) // Transformamos o objeto em texto.
         });
 
+        // 🛡️ EXPLICAÇÃO DA CORREÇÃO:
+        // O comando 'resposta.ok' verifica se o servidor retornou sucesso (status entre 200 e 299).
         if (resposta.ok) {
-            const dados = await resposta.json(); 
+            const dados = await resposta.json(); // Se deu certo, extraímos o Token do JSON de resposta.
             
-            // Extrai o token gerado pelo servidor (geralmente um JWT)
-            tokenAtual = dados.token;
-
-            // 🎯 [PASSO 3: Persistência]
-            // Salva o token no navegador para manter o login ativo
-            localStorage.setItem('adminToken', tokenAtual); 
+            tokenAtual = dados.token; // Salvamos o token na memória do código.
+            localStorage.setItem('adminToken', tokenAtual); // Salvamos o token no "HD" do navegador.
             
-            loginForm.reset();         // Limpa os campos de texto
-            mostrarPainelAdmin();     // Troca a interface
-            carregarCharadas();       // Busca os dados protegidos
+            loginError.classList.add('hidden'); // Escondemos qualquer erro de tentativas passadas.
+            loginForm.reset(); // Limpamos os campos de texto do formulário.
+            mostrarPainelAdmin(); // Trocamos a tela para o painel de controle.
+            carregarCharadas(); // Iniciamos a busca pelas charadas cadastradas.
         } else {
-            // Se o status for diferente de 200-299, exibe mensagem de erro
-            loginError.classList.remove('hidden');
+            // Se o servidor disser que a senha está errada (Status 401 ou 404), entramos aqui.
+            loginError.classList.remove('hidden'); // Mostramos a mensagem de erro para o usuário.
+            // O código para aqui. O usuário não entra no painel se o login falhar.
         }
     } catch (erro) {
-        console.error("Erro na conexão:", erro);
-        alert("Não foi possível conectar ao servidor.");
+        // Este bloco lida com erros de rede (ex: servidor fora do ar ou sem internet).
+        console.error("Erro fatal de conexão:", erro);
+        alert("Não foi possível alcançar o servidor. Tente novamente mais tarde.");
     }
 });
 
-/**
- * Logout: Limpa as credenciais e "reseta" a visão do app.
- */
+// O Logout limpa as credenciais e reinicia a visão do app.
 btnLogout.addEventListener('click', () => {
-    tokenAtual = null;
-    localStorage.removeItem('adminToken'); // Remove o "passaporte" do storage
-    mostrarLogin(); 
+    tokenAtual = null; // Apaga o token da memória.
+    localStorage.removeItem('adminToken'); // Apaga o token do navegador.
+    mostrarLogin(); // Volta para a estaca zero.
 });
 
-
 // ==========================================
-// 2. CRUD: READ (Busca e Listagem)
+// 5. OPERAÇÃO: BUSCAR DADOS (READ)
 // ==========================================
 
-/**
- * carregarCharadas: Busca a lista de charadas na API.
- * Requer o Token de Autorização no Header.
- */
+// Função que solicita a lista de charadas para o servidor.
 async function carregarCharadas() {
     try {
-        // 🎯 [PASSO 4: Requisição Privada]
         const resposta = await fetch(`${API_BASE_URL}/charadas`, {
-            method: 'GET',
+            method: 'GET', // Método padrão para buscar informações.
             headers: {
-                // Padrão Bearer Token: comum em autenticação moderna
+                // Enviamos o token no cabeçalho 'Authorization' para provar que somos admin.
                 'Authorization': `Bearer ${tokenAtual}`
             }
         });
 
-        // Caso o token tenha expirado ou seja inválido
+        // Caso o token seja antigo ou falso, o servidor retorna 401 (Não autorizado).
         if (resposta.status === 401 || resposta.status === 403) {
-            alert("Sua sessão expirou. Por favor, faça login novamente.");
-            btnLogout.click(); // Força o logout
+            alert("Sua sessão expirou por segurança. Faça login novamente.");
+            btnLogout.click(); // Chamamos o logout automaticamente.
             return;
         }
 
         if (resposta.ok) {
-            charadas = await resposta.json(); 
-            renderizarTabela(); // Atualiza o HTML com os novos dados
-        } else {
-            console.error("Erro ao obter dados da API.");
+            charadas = await resposta.json(); // Salvamos a lista vinda da API na nossa variável local.
+            renderizarTabela(); // Chamamos a função que desenha os itens na tela.
         }
     } catch (erro) {
-        console.error("Erro de rede:", erro);
+        console.error("Erro ao carregar a lista:", erro);
     }
 }
 
-/**
- * renderizarTabela: Transforma o array de objetos em linhas de tabela HTML.
- */
+// Transforma os dados em código HTML dentro da tabela.
 function renderizarTabela() {
-    tabelaCharadas.innerHTML = ''; // Limpa a tabela antes de reconstruir
-    totalCharadasEl.textContent = charadas.length; // Atualiza o contador no topo
+    tabelaCharadas.innerHTML = ''; // Limpamos a tabela para não repetir itens antigos.
+    totalCharadasEl.textContent = charadas.length; // Atualizamos o número total no topo.
 
+    // Para cada charada que recebemos, criamos uma nova linha na tabela.
     charadas.forEach(charada => {
-        const tr = document.createElement('tr');
-        // Usamos Template Literals (``) para criar o HTML de forma legível
+        const tr = document.createElement('tr'); // Cria o elemento <tr>.
+        // Inserimos as colunas com a pergunta, resposta e os botões de ação.
         tr.innerHTML = `
             <td class="px-6 py-4 text-sm text-white-800">${charada.pergunta}</td>
             <td class="px-6 py-4 text-sm text-white-600 font-medium">${charada.resposta}</td>
@@ -181,35 +149,32 @@ function renderizarTabela() {
                 <button onclick="deletarCharada('${charada.id}')" class="text-red-600 hover:text-red-900">Excluir</button>
             </td>
         `;
-        tabelaCharadas.appendChild(tr);
+        tabelaCharadas.appendChild(tr); // Adiciona a linha pronta dentro do <tbody>.
     });
 }
 
 // ==========================================
-// 3. CRUD: CREATE e UPDATE (Criação e Edição)
+// 6. OPERAÇÃO: SALVAR E EDITAR (CREATE/UPDATE)
 // ==========================================
 
-/**
- * O mesmo formulário serve para Criar e para Editar.
- * A diferença é a presença ou ausência de um ID no campo oculto (Hidden Input).
- */
+// O mesmo formulário lida com dois processos: criar algo novo ou atualizar algo que já existe.
 charadaForm.addEventListener('submit', async (e) => {
     e.preventDefault();
 
+    // Verificamos se há um ID escondido no campo 'charadaId'.
     const id = document.getElementById('charadaId').value;
     const pergunta = document.getElementById('pergunta').value;
     const resposta = document.getElementById('resposta').value;
-
-    const charadaData = { pergunta, resposta };
+    const charadaData = { pergunta, resposta }; // Montamos o pacote de dados.
 
     try {
-        let url = `${API_BASE_URL}/charadas`;
-        let metodoHTTP = 'POST'; // Por padrão, assume que é uma nova charada
+        let url = `${API_BASE_URL}/charadas`; // Endereço padrão para criação.
+        let metodoHTTP = 'POST'; // Método padrão para criação.
 
-        // Se existir um ID, mudamos para o modo de Edição
+        // Se o ID existir, significa que clicamos em "Editar" antes de enviar.
         if (id) {
-            url = `${API_BASE_URL}/charadas/${id}`; // URL específica com ID
-            metodoHTTP = 'PUT'; // Método para atualização total
+            url = `${API_BASE_URL}/charadas/${id}`; // Mudamos a URL para apontar para a charada específica.
+            metodoHTTP = 'PUT'; // O método 'PUT' serve para atualizar dados existentes.
         }
 
         const respostaApi = await fetch(url, {
@@ -222,86 +187,73 @@ charadaForm.addEventListener('submit', async (e) => {
         });
 
         if (respostaApi.ok) {
-            alert(id ? "✅ Charada atualizada!" : "✅ Charada criada com sucesso!");
-            limparFormulario();
-            carregarCharadas(); // Recarrega a lista para mostrar a alteração
+            alert(id ? "✅ Charada atualizada com sucesso!" : "✅ Nova charada salva!");
+            limparFormulario(); // Limpa o formulário e volta o título para "Nova Charada".
+            carregarCharadas(); // Recarrega a tabela para mostrar as mudanças.
         } else {
-            alert("❌ Erro ao salvar. Verifique os dados.");
+            alert("Erro ao salvar. Verifique se os campos estão preenchidos.");
         }
     } catch (erro) {
-        console.error("Erro na operação:", erro);
+        console.error("Erro na operação de salvar:", erro);
     }
 });
 
-/**
- * editarCharada: Preenche o formulário com os dados de uma charada existente.
- */
+// Esta função "prepara" o formulário para edição.
 function editarCharada(id) {
-    // Busca o objeto dentro do nosso array local pelo ID
+    // Busca a charada dentro da nossa lista local usando o ID recebido no clique.
     const charada = charadas.find(c => String(c.id) === String(id)); 
     
     if (charada) {
-        // Alimenta os campos do form com os dados da charada selecionada
-        document.getElementById('charadaId').value = charada.id;
+        // Preenche os inputs do formulário com os dados da charada encontrada.
+        document.getElementById('charadaId').value = charada.id; // Preenche o campo oculto.
         document.getElementById('pergunta').value = charada.pergunta;
         document.getElementById('resposta').value = charada.resposta;
 
-        // Muda a interface para indicar o modo de edição
-        formTitle.textContent = "Editar Charada";
-        btnCancelar.classList.remove('hidden');
+        // Ajusta a interface para o modo de edição.
+        formTitle.textContent = "Editar Charada"; 
+        btnCancelar.classList.remove('hidden'); // Mostra o botão para cancelar a edição.
     }
 }
 
-// Listener para o botão cancelar (limpa a edição e volta para modo criação)
+// Função para resetar o formulário ao estado original de criação.
 btnCancelar.addEventListener('click', limparFormulario);
 
 function limparFormulario() {
-    charadaForm.reset();
-    document.getElementById('charadaId').value = ''; // Limpa o ID oculto
-    formTitle.textContent = "Nova Charada";
-    btnCancelar.classList.add('hidden');
+    charadaForm.reset(); // Limpa todos os textos.
+    document.getElementById('charadaId').value = ''; // Limpa o ID oculto para não editar por engano.
+    formTitle.textContent = "Nova Charada"; // Volta o título original.
+    btnCancelar.classList.add('hidden'); // Esconde o botão cancelar.
 }
 
-
 // ==========================================
-// 4. CRUD: DELETE (Remoção)
+// 7. OPERAÇÃO: REMOVER (DELETE)
 // ==========================================
 
-/**
- * deletarCharada: Remove um item permanentemente da API.
- */
 async function deletarCharada(id) {
-    // Confirmação de segurança para evitar cliques acidentais
-    if (!confirm("⚠️ Tem certeza que deseja excluir esta charada permanentemente?")) return;
+    // Pedimos confirmação para que o usuário não apague dados sem querer.
+    if (!confirm("⚠️ Tem certeza que deseja apagar esta charada?")) return;
 
     try {
         const resposta = await fetch(`${API_BASE_URL}/charadas/${id}`, {
-            method: 'DELETE', // Método padrão para remoção
-            headers: {
-                'Authorization': `Bearer ${tokenAtual}`
-            }
+            method: 'DELETE', // Comando para remover do banco de dados.
+            headers: { 'Authorization': `Bearer ${tokenAtual}` }
         });
 
         if (resposta.ok) {
-            carregarCharadas(); // Atualiza a lista após excluir
+            carregarCharadas(); // Se apagou na API, recarregamos a nossa lista local.
         } else {
-            alert("Erro ao tentar excluir o registro.");
+            alert("Falha ao tentar excluir o registro.");
         }
     } catch (erro) {
-        console.error("Erro na exclusão:", erro);
+        console.error("Erro ao deletar:", erro);
     }
 }
 
-
 // ==========================================
-// CONTROLE DE INTERFACE (Telas)
+// 8. CONTROLE VISUAL (TELAS)
 // ==========================================
 
-/**
- * As funções abaixo alternam a visibilidade dos elementos usando classes CSS
- * (como a classe 'hidden' do Tailwind ou CSS customizado).
- */
-
+// Mostra a tela de login e esconde o painel.
 function mostrarLogin() {
     loginSection.classList.remove('hidden');
     adminSection.classList.add('hidden');
@@ -309,11 +261,12 @@ function mostrarLogin() {
     loginError.classList.add('hidden');
 }
 
+// Mostra o painel e esconde a tela de login.
 function mostrarPainelAdmin() {
     loginSection.classList.add('hidden');
     adminSection.classList.remove('hidden');
     userInfo.classList.remove('hidden');
 }
 
-// Executa a função inicializadora ao carregar o script
+// Dispara o aplicativo assim que o navegador terminar de ler o arquivo.
 iniciarApp();
