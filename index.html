@@ -11,7 +11,6 @@
         body { font-family: 'Inter', sans-serif; }
         .serif { font-family: 'Playfair Display', serif; }
         
-        /* Estilização da Scrollbar para combinar com o tema escuro */
         .custom-scrollbar::-webkit-scrollbar { width: 5px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #ffffff; }
         .custom-scrollbar::-webkit-scrollbar-thumb { 
@@ -19,7 +18,6 @@
             border-radius: 10px; 
         }
 
-        /* Efeito de vidro (Glassmorphism) igual ao seu card lateral */
         .glass-card {
             background: rgba(30, 41, 59, 0.5);
             backdrop-filter: blur(10px);
@@ -126,23 +124,13 @@
                             <table class="w-full">
                                 <thead class="sticky top-0 bg-[#161f31] z-10">
                                     <tr class="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">
-                                        <th class="px-8 py-4 text-left">Pergunta</th>
+                                        <th class="px-8 py-4 text-left w-1/2">Pergunta</th>
                                         <th class="px-8 py-4 text-left">Resposta</th>
                                         <th class="px-8 py-4 text-right">Ações</th>
                                     </tr>
                                 </thead>
                                 <tbody id="tabelaCharadas" class="divide-y divide-slate-800/50">
-                                    <tr class="group hover:bg-white/[0.02] transition-all">
-                                        <td class="px-8 py-6 text-sm italic text-slate-400 leading-relaxed">"O que é que tem dentes mas nunca come?"</td>
-                                        <td class="px-8 py-6 text-xs font-bold text-yellow-600 uppercase tracking-widest">O Pente</td>
-                                        <td class="px-8 py-6 text-right">
-                                            <div class="flex justify-end gap-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <button class="text-slate-500 hover:text-white"><i class="fas fa-pen text-xs"></i></button>
-                                                <button class="text-slate-500 hover:text-red-500"><i class="fas fa-trash-can text-xs"></i></button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                </tbody>
+                                    </tbody>
                             </table>
                         </div>
                     </div>
